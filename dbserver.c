@@ -4,6 +4,8 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 
+#include "msg.h"
+
 // Struct for thread
 struct clientStruct
 {
@@ -95,7 +97,16 @@ void *manageClient(void *args)
 {
 
     struct clientStruct clientInfoStruct = *((struct clientStruct *)args);
-    printf("Client at: %d\n", clientInfoStruct.clientfd);
+
+    // Handle data from client
+    struct msg clientMsg;
+    size_t msgSize = sizeof(clientMsg);
+
+    while (read(clientInfoStruct.clientfd, &clientMsg, msgSize) > 0)
+    {
+
+        // DO DATABASE STUFF
+    }
 
     close(clientInfoStruct.clientfd);
 

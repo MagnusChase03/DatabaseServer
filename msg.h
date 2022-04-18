@@ -22,4 +22,4 @@ struct msg
 {
     uint8_t type;
     struct record rd;
-}
+};
