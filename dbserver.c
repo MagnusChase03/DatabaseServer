@@ -51,10 +51,8 @@ void startServer(int port)
     socketInfo.sin_addr.s_addr = INADDR_ANY;
     socketInfo.sin_port = htons(port);
 
-    socklen_t infoSize = sizeof(socketInfo);
-
     // Bind and listen
-    if (bind(socketfd, (struct sockaddr *)&socketInfo, infoSize) == -1)
+    if (bind(socketfd, (struct sockaddr *)&socketInfo, sizeof(socketInfo)) == -1)
     {
 
         perror("Failed to bind socket");
@@ -100,12 +98,11 @@ void *manageClient(void *args)
 
     // Handle data from client
     struct msg clientMsg;
-    size_t msgSize = sizeof(clientMsg);
-
-    while (read(clientInfoStruct.clientfd, &clientMsg, msgSize) > 0)
+    while (read(clientInfoStruct.clientfd, &clientMsg, sizeof(clientMsg)) > 0)
     {
 
         // DO DATABASE STUFF
+        printf("Name: %s FROM %d\n", clientMsg.rd.name, clientInfoStruct.clientfd);
     }
 
     close(clientInfoStruct.clientfd);
