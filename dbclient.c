@@ -69,9 +69,11 @@ void connectServer(char *hostname, int port)
     startShell(socketfd);
 }
 
+// Handle database interactions
 void startShell(int socketfd)
 {
 
+    // Get Choice
     char *buffer = (char *)malloc(sizeof(char));
     size_t bufferSize = sizeof(buffer);
 
@@ -82,6 +84,7 @@ void startShell(int socketfd)
         getline(&buffer, &bufferSize, stdin);
         buffer[strlen(buffer) - 1] = '\0';
 
+        // Put
         if (strcmp(buffer, "1") == 0)
         {
 
@@ -92,12 +95,42 @@ void startShell(int socketfd)
             getline(&name, &nameSize, stdin);
             name[strlen(name) - 1] = '\0';
 
+            char *id = (char *)malloc(sizeof(char) * 32);
+            size_t idSize = sizeof(id);
+
+            printf("Enter ID: ");
+            getline(&id, &idSize, stdin);
+            id[strlen(id) - 1] = '\0';
+
             struct msg writeMsg;
+            writeMsg.type = 1;
             strcpy(writeMsg.rd.name, name);
+            writeMsg.rd.id = (uint32_t)strtoul(id, NULL, 10);
 
             write(socketfd, &writeMsg, sizeof(writeMsg));
 
             free(name);
+            free(id);
+        }
+
+        // GET
+        else if (strcmp(buffer, "2") == 0)
+        {
+
+            char *id = (char *)malloc(sizeof(char) * 32);
+            size_t idSize = sizeof(id);
+
+            printf("Enter ID: ");
+            getline(&id, &idSize, stdin);
+            id[strlen(id) - 1] = '\0';
+
+            struct msg writeMsg;
+            writeMsg.type = 2;
+            writeMsg.rd.id = (uint32_t)strtoul(id, NULL, 10);
+
+            write(socketfd, &writeMsg, sizeof(writeMsg));
+
+            free(id);
         }
     }
 

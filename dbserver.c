@@ -3,6 +3,8 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "msg.h"
 
@@ -14,6 +16,8 @@ struct clientStruct
     struct sockaddr_in clientInfo;
 };
 
+void setOpenIndex(int databasefd);
+struct record findID(int databasefd, uint32_t id);
 void startServer(int port);
 void *manageClient(void *args);
 
@@ -30,6 +34,46 @@ int main(int argc, char **argv)
     startServer(atoi(argv[1]));
 
     return 0;
+}
+
+// Finds the next open spot in database to write to
+void setOpenIndex(int databasefd)
+{
+
+    lseek(databasefd, 0, SEEK_SET);
+    struct record buffer;
+
+    while (read(databasefd, &buffer, sizeof(buffer)) > 0)
+    {
+
+        if (buffer.id == 0)
+        {
+
+            return;
+        }
+    }
+}
+
+// Finds record with said ID
+struct record findID(int databasefd, uint32_t id)
+{
+
+    lseek(databasefd, 0, SEEK_SET);
+    struct record buffer;
+
+    while (read(databasefd, &buffer, sizeof(buffer)) > 0)
+    {
+
+        if (buffer.id == id)
+        {
+
+            return buffer;
+        }
+    }
+
+    struct record notFound;
+    notFound.id = 0;
+    return notFound;
 }
 
 // Starts listening on port
@@ -96,13 +140,29 @@ void *manageClient(void *args)
 
     struct clientStruct clientInfoStruct = *((struct clientStruct *)args);
 
+    // Open database
+    int databasefd = open("./database.txt", O_RDWR | O_CREAT, S_IRWXU);
+
     // Handle data from client
     struct msg clientMsg;
     while (read(clientInfoStruct.clientfd, &clientMsg, sizeof(clientMsg)) > 0)
     {
 
-        // DO DATABASE STUFF
-        printf("Name: %s FROM %d\n", clientMsg.rd.name, clientInfoStruct.clientfd);
+        // Handle put
+        if (clientMsg.type == 1)
+        {
+
+            setOpenIndex(databasefd);
+            write(databasefd, &(clientMsg.rd), sizeof(clientMsg.rd));
+        }
+
+        // Handle get
+        else if (clientMsg.type == 2)
+        {
+
+            struct record found = findID(databasefd, clientMsg.rd.id);
+            printf("Found: %s\n", found.name);
+        }
     }
 
     close(clientInfoStruct.clientfd);
