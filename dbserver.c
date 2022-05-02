@@ -49,6 +49,7 @@ void setOpenIndex(int databasefd)
         if (buffer.id == 0)
         {
 
+            lseek(databasefd, -sizeof(buffer), SEEK_CUR);
             return;
         }
     }
@@ -67,13 +68,14 @@ struct record findID(int databasefd, uint32_t id)
         if (buffer.id == id)
         {
 
+            lseek(databasefd, -sizeof(buffer), SEEK_CUR);
             return buffer;
         }
     }
 
-    struct record notFound;
-    notFound.id = 0;
-    return notFound;
+    struct record empty;
+    empty.id = 0;
+    return empty;
 }
 
 // Starts listening on port
@@ -145,6 +147,7 @@ void *manageClient(void *args)
 
     // Handle data from client
     struct msg clientMsg;
+    int worked = 0;
     while (read(clientInfoStruct.clientfd, &clientMsg, sizeof(clientMsg)) > 0)
     {
 
@@ -153,7 +156,21 @@ void *manageClient(void *args)
         {
 
             setOpenIndex(databasefd);
-            write(databasefd, &(clientMsg.rd), sizeof(clientMsg.rd));
+
+            // Lcok part of file if not already
+            if (lockf(databasefd, F_TLOCK, sizeof(clientMsg.rd)) == 0)
+            {
+
+                lockf(databasefd, F_LOCK, sizeof(clientMsg.rd));
+                write(databasefd, &(clientMsg.rd), sizeof(clientMsg.rd));
+                worked = 1;
+                lockf(databasefd, F_ULOCK, sizeof(clientMsg.rd));
+            }
+            else
+            {
+
+                worked = 0;
+            }
         }
 
         // Handle get
@@ -161,8 +178,44 @@ void *manageClient(void *args)
         {
 
             struct record found = findID(databasefd, clientMsg.rd.id);
-            printf("Found: %s\n", found.name);
+
+            struct msg writeMsg;
+            writeMsg.type = found.id == 0 ? 5 : 4;
+            writeMsg.rd = found;
+
+            write(clientInfoStruct.clientfd, &writeMsg, sizeof(writeMsg));
+
+            continue;
         }
+
+        // Handle delete
+        else if (clientMsg.type == 3)
+        {
+
+            struct record found = findID(databasefd, clientMsg.rd.id);
+
+            struct record empty;
+            empty.id = 0;
+
+            if (!found.id == 0)
+            {
+
+                worked = 1;
+            }
+            else
+            {
+
+                worked = 0;
+            }
+
+            write(databasefd, &empty, sizeof(empty));
+        }
+
+        // Send message back
+        struct msg writeMsg;
+        writeMsg.type = worked == 1 ? 4 : 5;
+
+        write(clientInfoStruct.clientfd, &writeMsg, sizeof(writeMsg));
     }
 
     close(clientInfoStruct.clientfd);

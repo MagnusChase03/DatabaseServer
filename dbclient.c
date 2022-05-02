@@ -74,13 +74,14 @@ void startShell(int socketfd)
 {
 
     // Get Choice
+    char *action = "PUT";
     char *buffer = (char *)malloc(sizeof(char));
     size_t bufferSize = sizeof(buffer);
 
-    while (strcmp(buffer, "exit") != 0)
+    while (strcmp(buffer, "0") != 0)
     {
 
-        printf("Enter Your Choice: ");
+        printf("Enter Your Choice (1 PUT, 2 GET, 3 DELETE, 0 QUIT): ");
         getline(&buffer, &bufferSize, stdin);
         buffer[strlen(buffer) - 1] = '\0';
 
@@ -111,6 +112,8 @@ void startShell(int socketfd)
 
             free(name);
             free(id);
+
+            action = "PUT";
         }
 
         // GET
@@ -131,6 +134,62 @@ void startShell(int socketfd)
             write(socketfd, &writeMsg, sizeof(writeMsg));
 
             free(id);
+
+            struct msg serverMsg;
+            read(socketfd, &serverMsg, sizeof(serverMsg));
+            if (!serverMsg.rd.id == 0)
+            {
+
+                printf("Name: %s\nID: %u\n", serverMsg.rd.name, serverMsg.rd.id);
+            }
+            else
+            {
+
+                printf("Record Not Found\n");
+            }
+
+            continue;
+        }
+
+        // Delete
+        else if (strcmp(buffer, "3") == 0)
+        {
+
+            char *id = (char *)malloc(sizeof(char) * 32);
+            size_t idSize = sizeof(id);
+
+            printf("Enter ID: ");
+            getline(&id, &idSize, stdin);
+            id[strlen(id) - 1] = '\0';
+
+            struct msg writeMsg;
+            writeMsg.type = 3;
+            writeMsg.rd.id = (uint32_t)strtoul(id, NULL, 10);
+
+            write(socketfd, &writeMsg, sizeof(writeMsg));
+
+            free(id);
+
+            action = "DEL";
+        }
+        else if (strcmp(buffer, "0") == 0)
+        {
+
+            break;
+        }
+
+        // Read status
+        struct msg serverMsg;
+        read(socketfd, &serverMsg, sizeof(serverMsg));
+        if (serverMsg.type == 4)
+        {
+
+            printf("%s Successful\n", action);
+        }
+        else
+        {
+
+            printf("%s Failed\n", action);
         }
     }
 
